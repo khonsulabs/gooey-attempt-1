@@ -12,7 +12,7 @@ pub const LABEL_PADDING: Figure<f32, Scaled> = Figure::new(5.);
 pub struct Checkbox {
     label: String,
     checked: bool,
-    toggled: Callback,
+    toggled: Callback<bool>,
 }
 
 impl Checkbox {
@@ -20,7 +20,11 @@ impl Checkbox {
         Builder::new()
     }
 
-    pub fn new<S: Into<String>>(label: S, checked: bool, toggled: Callback) -> StyledWidget<Self> {
+    pub fn new<S: Into<String>>(
+        label: S,
+        checked: bool,
+        toggled: Callback<bool>,
+    ) -> StyledWidget<Self> {
         StyledWidget::from(Self {
             label: label.into(),
             toggled,
@@ -72,7 +76,7 @@ impl Builder {
         self
     }
 
-    pub fn on_clicked(mut self, clicked: Callback) -> Self {
+    pub fn on_clicked(mut self, clicked: Callback<bool>) -> Self {
         self.checkbox.toggled = clicked;
         self
     }
@@ -103,7 +107,7 @@ impl Widget for Checkbox {
     fn receive_event(&mut self, event: Self::Event, context: &Context<Self>) {
         let InternalCheckboxEvent::Clicked = event;
         self.set_checked(!self.checked, context);
-        self.toggled.invoke(());
+        self.toggled.invoke(self.checked);
     }
 }
 

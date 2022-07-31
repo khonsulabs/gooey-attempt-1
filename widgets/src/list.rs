@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Debug, marker::PhantomData};
+use std::{borrow::Cow, fmt::Debug, marker::PhantomData, ops::Deref};
 
 use gooey_core::{
     figures::Figure,
@@ -109,15 +109,60 @@ impl List {
         removed_child
     }
 
+    pub fn insert<W: Widget>(
+        &mut self,
+        index: usize,
+        widget: StyledWidget<W>,
+        context: &Context<Self>,
+    ) {
+        let registration = context.register(widget);
+        self.insert_registration(index, registration, context);
+    }
+
     pub fn push<W: Widget>(&mut self, widget: StyledWidget<W>, context: &Context<Self>) {
         let registration = context.register(widget);
         self.push_registration(registration, context);
     }
 
-    pub fn push_registration(&mut self, registration: WidgetRegistration, context: &Context<Self>) {
-        self.children.push(registration.clone());
+    pub fn insert_registration(
+        &mut self,
+        index: usize,
+        registration: WidgetRegistration,
+        context: &Context<Self>,
+    ) {
+        self.children.insert(index, registration.clone());
 
         context.send_command(ListCommand::ChildAdded(registration));
+    }
+
+    pub fn push_registration(&mut self, registration: WidgetRegistration, context: &Context<Self>) {
+        self.insert_registration(self.children.len(), registration, context);
+    }
+
+    pub fn map_child<W: Widget, F: FnOnce(&W, &Context<W>) -> R, R>(
+        &self,
+        index: usize,
+        context: &Context<Self>,
+        with_fn: F,
+    ) -> Option<R> {
+        context.map_widget(self.children.get(index)?.id(), with_fn)
+    }
+
+    pub fn map_child_mut<W: Widget, F: FnOnce(&mut W, &Context<W>) -> R, R>(
+        &self,
+        index: usize,
+        context: &Context<Self>,
+        with_fn: F,
+    ) -> Option<R> {
+        context.map_widget_mut(self.children.get(index)?.id(), with_fn)
+    }
+}
+
+impl Deref for List {
+    type Target = [WidgetRegistration];
+
+    fn deref(&self) -> &Self::Target {
+        &self.children
     }
 }
 

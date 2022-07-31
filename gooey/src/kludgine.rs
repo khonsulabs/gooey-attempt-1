@@ -7,7 +7,6 @@ use gooey_core::{
 };
 use gooey_rasterizer::winit::{event::ModifiersState, window::Theme};
 use kludgine::app::OpenableWindow;
-use platforms::target::{OS, TARGET_OS};
 
 use crate::{
     core::{Frontend, Gooey, Transmogrifiers, Widget, WidgetStorage},
@@ -103,15 +102,17 @@ impl WindowCreator for GooeyWindow {
             .to_owned()
     }
 
+    #[cfg(target_os = "linux")]
     fn initial_system_theme(&self) -> Theme {
         // winit doesn't have a way on linux to detect dark mode
-        if TARGET_OS == OS::Linux {
-            gtk3_preferred_theme()
-                .or_else(gtk2_theme)
-                .unwrap_or(Theme::Light)
-        } else {
-            Theme::Light
-        }
+        gtk3_preferred_theme()
+            .or_else(gtk2_theme)
+            .unwrap_or(Theme::Light)
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn initial_system_theme(&self) -> Theme {
+        Theme::Light
     }
 
     fn initial_position(&self) -> Option<Point<i32, Pixels>> {

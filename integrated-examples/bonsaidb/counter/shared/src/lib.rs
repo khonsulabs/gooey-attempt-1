@@ -1,34 +1,34 @@
-use bonsaidb::core::custom_api::{CustomApi, Infallible};
+use bonsaidb::core::{
+    api::{Api, Infallible},
+    schema::{ApiName, Qualified},
+};
 use serde::{Deserialize, Serialize};
 
 /// The name of the database that the counter will use.
 pub const DATABASE_NAME: &str = "counter";
 
-/// The API requests for this example.
+/// Increments the counter.
 #[derive(Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "actionable-traits", derive(actionable::Actionable))]
-pub enum Request {
-    /// Request the current counter value.
-    #[cfg_attr(feature = "actionable-traits", actionable(protection = "none"))]
-    GetCounter,
-    /// Increments the counter. No permissions needed.
-    #[cfg_attr(feature = "actionable-traits", actionable(protection = "none"))]
-    IncrementCounter,
-}
+pub struct IncrementCounter;
 
-/// The API responses for this example.
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Response {
-    /// The current value of the counter. Sent whenever requested or when the counter is updated.
-    CounterValue(u64),
-}
+/// The current value of the counter. Sent whenever requested or when the counter is updated.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default)]
+pub struct CounterValue(pub u64);
 
-/// The [`CustomApi`] definition.
-#[derive(Debug)]
-pub enum ExampleApi {}
-
-impl CustomApi for ExampleApi {
+impl Api for IncrementCounter {
     type Error = Infallible;
-    type Request = Request;
-    type Response = Response;
+    type Response = CounterValue;
+
+    fn name() -> ApiName {
+        ApiName::private("increment-counter")
+    }
+}
+
+impl Api for CounterValue {
+    type Error = Infallible;
+    type Response = CounterValue;
+
+    fn name() -> ApiName {
+        ApiName::private("counter-value")
+    }
 }

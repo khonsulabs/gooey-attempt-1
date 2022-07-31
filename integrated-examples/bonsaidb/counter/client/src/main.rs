@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use bonsaidb::client::Client;
-use bonsaidb_counter_shared::{ExampleApi, Request, Response};
+use bonsaidb::client::{ApiCallback, Client};
+use bonsaidb_counter_shared::{CounterValue, IncrementCounter};
 use gooey::{
     core::{Context, StyledWidget, WidgetId},
     widgets::{
@@ -146,13 +146,13 @@ async fn process_database_commands(receiver: flume::Receiver<DatabaseCommand>) {
     let client = loop {
         let client_context = loop_context.clone();
         match Client::build("ws://127.0.0.1:8081".parse().unwrap())
-            .with_custom_api_callback::<ExampleApi, _>(move |response| {
-                if let Ok(Response::CounterValue(count)) = response {
-                    update_counter_label(&client_context, count);
-                }
-            })
+            .with_api_callback::<CounterValue>(ApiCallback::new_with_context(
+                client_context,
+                move |counter: CounterValue, context| async move {
+                    update_counter_label(&context, counter.0);
+                },
+            ))
             .finish()
-            .await
         {
             Ok(client) => break client,
             Err(err) => {
@@ -162,8 +162,11 @@ async fn process_database_commands(receiver: flume::Receiver<DatabaseCommand>) {
         }
     };
 
-    match client.send_api_request(Request::GetCounter).await {
-        Ok(Response::CounterValue(count)) => {
+    match client
+        .send_api_request_async(&CounterValue::default())
+        .await
+    {
+        Ok(CounterValue(count)) => {
             update_counter_label(&database, count);
         }
         Err(err) => {
@@ -183,12 +186,12 @@ async fn process_database_commands(receiver: flume::Receiver<DatabaseCommand>) {
     }
 }
 
-async fn increment_counter(client: &Client<ExampleApi>, context: &DatabaseContext) {
+async fn increment_counter(client: &Client, context: &DatabaseContext) {
     // While we could use the key value store directly, this example is showing
     // another powerful feature of BonsaiDb: the ablity to easily add a custom
     // api using your own enums.
-    match client.send_api_request(Request::IncrementCounter).await {
-        Ok(Response::CounterValue(count)) => {
+    match client.send_api_request_async(&IncrementCounter).await {
+        Ok(CounterValue(count)) => {
             update_counter_label(context, count);
         }
         Err(err) => {

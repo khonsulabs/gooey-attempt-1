@@ -400,9 +400,11 @@ impl<B: Behavior, F: Frontend> AnyEventPoster<B> for EventPoster<B, F> {
     fn post_event(&self, event: B::Event) {
         self.channels.post_event(InternalEvent::Content(event));
         self.frontend.set_widget_has_messages(self.widget.clone());
-        self.frontend
-            .gooey()
-            .process_widget_messages(&self.frontend);
+        if !self.frontend.gooey().is_managed_code() {
+            self.frontend
+                .gooey()
+                .process_widget_messages(&self.frontend);
+        }
     }
 }
 

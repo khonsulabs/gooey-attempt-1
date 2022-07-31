@@ -178,7 +178,7 @@ impl Headless<Rasterizer<Kludgine>> {
                 renderer,
                 scene_receiver,
             )
-            .await?,
+            ?,
         )
     }
 

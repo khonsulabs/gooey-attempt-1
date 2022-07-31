@@ -1,15 +1,15 @@
 use bonsaidb::{
-    core::{connection::StorageConnection, custom_api::Infallible, keyvalue::KeyValue},
+    core::{
+        api::Infallible, async_trait::async_trait, connection::AsyncStorageConnection,
+        keyvalue::AsyncKeyValue,
+    },
     local::config::Builder,
     server::{
-        Backend, BackendError, ConnectedClient, CustomApiDispatcher, CustomServer,
-        DefaultPermissions, ServerConfiguration,
+        api::{Handler, HandlerSession},
+        Backend, CustomServer, DefaultPermissions, ServerConfiguration,
     },
 };
-use bonsaidb_counter_shared::{
-    ExampleApi, GetCounterHandler, IncrementCounterHandler, Request, RequestDispatcher, Response,
-    DATABASE_NAME,
-};
+use bonsaidb_counter_shared::{CounterValue, IncrementCounter, DATABASE_NAME};
 
 /// The server's main entrypoint.
 #[tokio::main]
@@ -18,10 +18,12 @@ async fn main() -> anyhow::Result<()> {
     // done over the network connections.
     let server = CustomServer::<Example>::open(
         ServerConfiguration::new("counter-example.bonsaidb")
-            .default_permissions(DefaultPermissions::AllowAll),
+            .default_permissions(DefaultPermissions::AllowAll)
+            .with_schema::<()>()?
+            .with_api::<Example, CounterValue>()?
+            .with_api::<Example, IncrementCounter>()?,
     )
     .await?;
-    server.register_schema::<()>().await?;
     // Create the database if it doesn't exist.
     server.create_database::<()>(DATABASE_NAME, true).await?;
     // Start listening for websockets. This does not return until the server
@@ -40,39 +42,17 @@ enum Example {}
 
 impl Backend for Example {
     type ClientData = ();
-    type CustomApi = ExampleApi;
-    type CustomApiDispatcher = ApiDispatcher;
+    type Error = Infallible;
 }
 
-impl CustomApiDispatcher<Example> for ApiDispatcher {
-    fn new(server: &CustomServer<Example>, _client: &ConnectedClient<Example>) -> Self {
-        ApiDispatcher {
-            server: server.clone(),
-        }
-    }
-}
-
-/// The dispatcher for API requests.
-#[derive(Debug, actionable::Dispatcher)]
-#[dispatcher(input = Request)]
-struct ApiDispatcher {
-    server: CustomServer<Example>,
-}
-
-impl RequestDispatcher for ApiDispatcher {
-    type Error = BackendError<Infallible>;
-    type Output = Response;
-}
-
-#[actionable::async_trait]
-impl GetCounterHandler for ApiDispatcher {
-    /// Returns the current counter value.
+#[async_trait]
+impl Handler<Example, CounterValue> for Example {
     async fn handle(
-        &self,
-        _permissions: &actionable::Permissions,
-    ) -> Result<Response, BackendError<Infallible>> {
+        session: HandlerSession<'_, Example>,
+        _request: CounterValue,
+    ) -> bonsaidb::server::api::HandlerResult<CounterValue> {
         println!("Returning current counter value.");
-        let db = self.server.database::<()>(DATABASE_NAME).await.unwrap();
+        let db = session.server.database::<()>(DATABASE_NAME).await.unwrap();
 
         let value = db
             .get_key("count")
@@ -80,24 +60,25 @@ impl GetCounterHandler for ApiDispatcher {
             .await
             .unwrap()
             .unwrap_or_default();
-        Ok(Response::CounterValue(value))
+        Ok(CounterValue(value))
     }
 }
 
-#[actionable::async_trait]
-impl IncrementCounterHandler for ApiDispatcher {
+#[async_trait]
+impl Handler<Example, IncrementCounter> for Example {
     /// Increments the counter, and publishes a message with the new value.
     async fn handle(
-        &self,
-        _permissions: &actionable::Permissions,
-    ) -> Result<Response, BackendError<Infallible>> {
-        let db = self.server.database::<()>(DATABASE_NAME).await?;
+        session: HandlerSession<'_, Example>,
+        _request: IncrementCounter,
+    ) -> bonsaidb::server::api::HandlerResult<CounterValue> {
+        let db = session.server.database::<()>(DATABASE_NAME).await?;
 
         let new_value = db.increment_key_by("count", 1_u64).await?;
-        self.server
-            .broadcast(Ok(Response::CounterValue(new_value)))
+        session
+            .server
+            .broadcast::<CounterValue>(&CounterValue(new_value))
             .await;
 
-        Ok(Response::CounterValue(new_value))
+        Ok(CounterValue(new_value))
     }
 }
