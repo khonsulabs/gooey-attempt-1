@@ -40,6 +40,7 @@ pub trait Renderer: Debug + Send + Sync + Sized + 'static {
     /// Returns a new renderer instance with the state such that each operation
     /// executes as if the origin is `bounds.origin`. The returned instance's
     /// `size()` should equal `bounds.size`.
+    #[must_use]
     fn clip_to(&self, bounds: Rect<f32, Scaled>) -> Self;
 
     /// A [`Rect`] representing the area being drawn. This rect should be offset

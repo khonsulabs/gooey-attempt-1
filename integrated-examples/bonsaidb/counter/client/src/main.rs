@@ -202,9 +202,9 @@ async fn increment_counter(client: &Client, context: &DatabaseContext) {
 }
 
 fn update_counter_label(database: &DatabaseContext, count: u64) {
-    let button_state = database.context.widget_state(&database.button_id).unwrap();
-    let mut button = button_state
-        .lock::<Button>(database.context.frontend())
+    let mut button = database
+        .context
+        .lock_widget::<Button>(&database.button_id, database.context.frontend())
         .unwrap();
     button.widget.set_label(count.to_string(), &button.context);
 }

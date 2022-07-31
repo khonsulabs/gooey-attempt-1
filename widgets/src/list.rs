@@ -88,17 +88,14 @@ pub struct List {
 }
 
 impl List {
-    #[must_use]
     pub fn build(storage: &WidgetStorage) -> Builder<(), WidgetStorage> {
         Builder::new(storage.clone())
     }
 
-    #[must_use]
     pub fn bulleted(storage: &WidgetStorage) -> Builder<(), WidgetStorage> {
         Builder::new(storage.clone()).bulleted()
     }
 
-    #[must_use]
     pub fn unadorned(storage: &WidgetStorage) -> Builder<(), WidgetStorage> {
         Builder::new(storage.clone()).unadorned()
     }
@@ -181,6 +178,7 @@ impl Widget for List {
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Builder<K: Key, S: KeyedStorage<K>> {
     storage: S,
     kind: Kind,
@@ -264,7 +262,7 @@ impl<B: Behavior> Content<B> for List {
     }
 }
 
-impl<'a, K: Key, S: KeyedStorage<K>> ContentBuilder<K, S> for Builder<K, S> {
+impl<K: Key, S: KeyedStorage<K>> ContentBuilder<K, S> for Builder<K, S> {
     fn new(storage: S) -> Self {
         Self {
             storage,

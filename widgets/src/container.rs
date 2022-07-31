@@ -47,6 +47,7 @@ impl<B: Behavior> Content<B> for Container {
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Builder<K: Key, S: KeyedStorage<K>> {
     storage: S,
     child: Option<WidgetRegistration>,

@@ -110,9 +110,8 @@ impl Behavior for Demo {
         context: &gooey_core::Context<gooey_widgets::component::Component<Self>>,
     ) {
         let navigator = component.navigator.upgrade().expect("navigator not found");
-        let navigator_state = context.widget_state(navigator.id()).unwrap();
-        let mut navigator = navigator_state
-            .lock::<Navigator<Page>>(context.frontend())
+        let mut navigator = context
+            .lock_widget::<Navigator<Page>>(navigator.id(), context.frontend())
             .unwrap();
         match event {
             Event::Push => {

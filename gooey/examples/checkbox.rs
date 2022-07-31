@@ -50,10 +50,9 @@ impl Behavior for Counter {
     ) {
         let CounterEvent::ButtonClicked = event;
 
-        let checkbox_state = component
-            .widget_state(&CounterWidgets::Checkbox, context)
+        let mut checkbox = component
+            .lock_widget::<Checkbox>(&CounterWidgets::Checkbox, context)
             .unwrap();
-        let mut checkbox = checkbox_state.lock::<Checkbox>(context.frontend()).unwrap();
         if checkbox.widget.checked() {
             checkbox
                 .widget

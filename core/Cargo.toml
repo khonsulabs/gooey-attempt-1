@@ -17,5 +17,5 @@ flume = "0.10.10"
 palette = "0.6.0"
 log = "0.4.14"
 url = "2.2.2"
-parking_lot = "0.12.0"
+parking_lot = { version = "0.12.0", features = ["arc_lock"] }
 unic-langid = "0.9.0"

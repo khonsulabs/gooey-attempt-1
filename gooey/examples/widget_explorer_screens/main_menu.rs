@@ -80,9 +80,8 @@ impl Behavior for MainMenu {
     ) {
         let button = &component.buttons[event];
         if let Some(navigator) = component.navigator.upgrade() {
-            let navigator_state = context.widget_state(navigator.id()).unwrap();
-            let mut navigator = navigator_state
-                .lock::<Navigator<Page>>(context.frontend())
+            let mut navigator = context
+                .lock_widget::<Navigator<Page>>(navigator.id(), context.frontend())
                 .unwrap();
             navigator.widget.push(button.clone(), &navigator.context);
         }

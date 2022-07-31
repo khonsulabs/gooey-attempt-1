@@ -10,9 +10,9 @@ use std::{
 use gooey_core::{
     styles::{style_sheet::Classes, Style},
     AnyWidget, Callback, CallbackFn, Channels, Context, DefaultWidget, Frontend, Key, KeyedStorage,
-    LocalizationParameters, RelatedStorage, StyledWidget, Transmogrifier, TransmogrifierContext,
-    WeakWidgetRegistration, Widget, WidgetId, WidgetRef, WidgetRegistration, WidgetState,
-    WidgetStorage,
+    LocalizationParameters, LockedWidget, RelatedStorage, StyledWidget, Transmogrifier,
+    TransmogrifierContext, WeakWidgetRegistration, Widget, WidgetId, WidgetRef, WidgetRegistration,
+    WidgetState, WidgetStorage,
 };
 use parking_lot::{Mutex, RwLock};
 
@@ -121,6 +121,15 @@ impl<B: Behavior> Component<B> {
     pub fn widget_state(&self, id: &B::Widgets, context: &Context<Self>) -> Option<WidgetState> {
         self.registered_widget(id)
             .and_then(|widget| context.widget_state(widget.id()))
+    }
+
+    pub fn lock_widget<W: Widget>(
+        &self,
+        id: &B::Widgets,
+        context: &Context<Self>,
+    ) -> Option<LockedWidget<W>> {
+        let state = self.widget_state(id, context)?;
+        state.lock(context.frontend())
     }
 
     pub fn map_event<I: 'static, C: CallbackFn<I, <B as Behavior>::Event> + 'static>(

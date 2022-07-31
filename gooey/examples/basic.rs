@@ -57,10 +57,9 @@ impl Behavior for Counter {
         let CounterEvent::ButtonClicked = event;
         component.count += 1;
 
-        let button_state = component
-            .widget_state(&CounterWidgets::Button, context)
+        let mut button = component
+            .lock_widget::<Button>(&CounterWidgets::Button, context)
             .unwrap();
-        let mut button = button_state.lock::<Button>(context.frontend()).unwrap();
         button
             .widget
             .set_label(component.count.to_string(), &button.context);

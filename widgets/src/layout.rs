@@ -22,7 +22,6 @@ pub struct Layout {
 }
 
 impl Layout {
-    #[must_use]
     pub fn build<K: Key>(storage: &WidgetStorage) -> Builder<K, WidgetStorage> {
         Builder::new(storage.clone())
     }
@@ -116,6 +115,7 @@ impl Widget for Layout {
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Builder<K: Key, S: KeyedStorage<K>> {
     storage: S,
     children: ChildrenMap<K>,
@@ -467,7 +467,7 @@ impl<B: Behavior> Content<B> for Layout {
     }
 }
 
-impl<'a, K: Key, S: KeyedStorage<K>> ContentBuilder<K, S> for Builder<K, S> {
+impl<K: Key, S: KeyedStorage<K>> ContentBuilder<K, S> for Builder<K, S> {
     fn new(storage: S) -> Self {
         Self {
             storage,

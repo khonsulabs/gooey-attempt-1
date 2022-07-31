@@ -226,7 +226,6 @@ impl Text {
     }
 
     /// Returns an iterator over the spans in this text.
-    #[must_use]
     pub fn iter(&self) -> std::slice::Iter<'_, Span> {
         self.spans.iter()
     }

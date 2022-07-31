@@ -99,7 +99,7 @@ enum Event {
 
 fn next_event(
     commands: &flume::Receiver<Command>,
-    timers: &mut Vec<ScheduledTimer>,
+    timers: &mut [ScheduledTimer],
 ) -> Result<Event, flume::RecvError> {
     match duration_until_next_timer(timers) {
         Ok(Some(remaining_time)) => match commands.recv_timeout(remaining_time) {
@@ -117,7 +117,7 @@ fn next_event(
 /// but the amount of elapsed time on this thread is such that when we're ready
 /// to try to sleep the thread, the next timer was ready to fire already. A
 /// result of `Ok(None)` means that there are no timers waiting.
-fn duration_until_next_timer(timers: &mut Vec<ScheduledTimer>) -> Result<Option<Duration>, ()> {
+fn duration_until_next_timer(timers: &mut [ScheduledTimer]) -> Result<Option<Duration>, ()> {
     let now = Instant::now();
 
     timers.first().map_or(Ok(None), |timer| {

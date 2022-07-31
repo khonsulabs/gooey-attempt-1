@@ -12,7 +12,7 @@ use std::{
     },
 };
 
-use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
+use parking_lot::{lock_api::ArcMutexGuard, Mutex, RawMutex};
 use stylecs::{Style, StyleComponent};
 use unic_langid::LanguageIdentifier;
 
@@ -402,6 +402,25 @@ impl WidgetStorage {
         state.get(&widget_id.id).cloned().flatten()
     }
 
+    /// Returns the state of the widget with id `widget_id`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if internal lock handling results in an error.
+    #[must_use]
+    pub fn lock_widget<W: Widget>(
+        &self,
+        widget_id: &WidgetId,
+        frontend: &dyn AnyFrontend,
+    ) -> Option<LockedWidget<W>> {
+        let state = self.data.state.read().unwrap();
+        state
+            .get(&widget_id.id)
+            .cloned()
+            .flatten()
+            .and_then(|state| state.lock(frontend))
+    }
+
     /// Executes `callback` with the widget state parameters.
     ///
     /// # Panics
@@ -670,40 +689,60 @@ impl WidgetState {
     }
 
     /// Returns a [`WidgetGuard`] for this widget. Returns `None` if `OW` is the wrong type.
-    pub fn lock<'a, OW: Widget>(
-        &'a self,
-        frontend: &dyn AnyFrontend,
-    ) -> Option<WidgetGuard<'a, OW>> {
-        let widget = self.widget.lock();
+    pub fn lock<OW: Widget>(&self, frontend: &dyn AnyFrontend) -> Option<LockedWidget<OW>> {
+        let widget = self.widget.lock_arc();
         let channels = self.channels::<OW>()?;
         let context = Context::new(channels, frontend);
-        let widget =
-            MutexGuard::try_map(widget, |widget| widget.as_mut().as_mut_any().downcast_mut())
-                .ok()?;
-        Some(WidgetGuard::new(widget, context))
+        Some(LockedWidget::new(widget, context))
     }
 }
 
 /// A locked widget reference. No other threads can operate on the widget while
 /// this value is alive.
-pub struct WidgetGuard<'a, W: Widget> {
+pub struct LockedWidget<W: Widget> {
     /// The locked widget.
-    pub widget: MappedMutexGuard<'a, W>,
+    pub widget: WidgetGuard<W>,
     /// The context that can be used to call methods on `widget`.
     pub context: Context<W>,
 
     _managed_code_guard: ManagedCodeGuard,
 }
 
-impl<'a, W: Widget> WidgetGuard<'a, W> {
-    pub(crate) fn new(widget: MappedMutexGuard<'a, W>, context: Context<W>) -> Self {
+impl<W: Widget> LockedWidget<W> {
+    pub(crate) fn new(
+        widget: ArcMutexGuard<RawMutex, Box<dyn AnyWidget>>,
+        context: Context<W>,
+    ) -> Self {
         // While the guard is active, we're considered in managed code.
         let managed_code_guard = context.frontend().enter_managed_code();
         Self {
-            widget,
+            widget: WidgetGuard {
+                guard: widget,
+                _widget: PhantomData,
+            },
             context,
             _managed_code_guard: managed_code_guard,
         }
+    }
+}
+
+/// A reference to a locked widget.
+pub struct WidgetGuard<W: Widget> {
+    guard: ArcMutexGuard<RawMutex, Box<dyn AnyWidget>>,
+    _widget: PhantomData<W>,
+}
+
+impl<W: Widget> Deref for WidgetGuard<W> {
+    type Target = W;
+
+    fn deref(&self) -> &Self::Target {
+        self.guard.as_ref().as_any().downcast_ref().unwrap()
+    }
+}
+
+impl<W: Widget> DerefMut for WidgetGuard<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.guard.as_mut().as_mut_any().downcast_mut().unwrap()
     }
 }
 

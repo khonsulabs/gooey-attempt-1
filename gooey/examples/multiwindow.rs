@@ -145,10 +145,9 @@ impl Behavior for Counter {
             }
         }
 
-        let label_state = component
-            .widget_state(&CounterWidgets::Label, context)
+        let mut label = component
+            .lock_widget::<Label>(&CounterWidgets::Label, context)
             .unwrap();
-        let mut label = label_state.lock::<Label>(context.frontend()).unwrap();
         label
             .widget
             .set_label(component.count.to_string(), &label.context);
